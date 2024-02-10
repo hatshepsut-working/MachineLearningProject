@@ -92,13 +92,12 @@ def Read_comments_from_file(folder_path, vectorizer):
                 if file.endswith('.txt'):
                     file_path = os.path.join(folder_path, dir, file)
                     try:
-                        with open(file_path, 'r', encoding='gb2312') as f:
+                        with open(file_path, 'r', encoding='gb2312', errors='ignore') as f:
                             content = f.read()
-                            # print(content)
                             content = content.strip().replace(" ", "").replace('\n', '').replace('\t', '')
                         
                             if content == "": 
-                                print(file_path + " is empty")
+                                # print(file_path + " is empty")
                                 continue
                             
                             # 使用jieba进行分词
@@ -106,12 +105,12 @@ def Read_comments_from_file(folder_path, vectorizer):
                             X.append(words)
                             y.append(label)
                     except:
-                        print(file_path + " has exception")
+                        # print(file_path + " has exception")
                         continue
-                else:
-                    file_path = os.path.join(folder_path, dir, file)
-                    print(file_path + " is not txt")
-                    
+                # else:
+                #     file_path = os.path.join(folder_path, dir, file)
+                #     print(file_path + " is not txt")
+
     # 文本向量化
     # 返回的类型是scipy.sparse._csr.csr_matrix，是一个稀疏矩阵
     X = vectorizer.fit_transform(X)
