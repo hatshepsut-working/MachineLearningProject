@@ -13,13 +13,47 @@ import numpy as np
 import joblib
 import os
 import jieba
+from scipy.sparse import csr_matrix
+
+class OneHotVectorizer(object):
+    def fit_transform(self, raw_documents):
+        # 生词标记为"<UNK>"，测试集有可能会有生词
+        words_set = {"<UNK>"}
+        for raw_document in raw_documents:
+            words_set.update(raw_document.split())
+
+        # 构建列表
+        words_list = list(words_set)
+
+        # 构建字典
+        words_dict = {word:idx for idx, word in enumerate(words_list)}
+        
+        # 字典长度
+        dict_len = len(words_set)
+        
+        # 数据向量化 - 词袋模型
+        X = []
+        for sentence in raw_documents:
+            x = [0] * dict_len
+            for word in set(sentence.split()):
+                idx = words_dict[word] if word in words_dict else words_dict["<UNK>"]
+                x[idx] = 1
+            X.append(x)
+        # 将列表转换为 CSR 格式的稀疏矩阵
+        sparse_matrix = csr_matrix(X)
+
+        # 打印稀疏矩阵
+        return sparse_matrix
+
+
+
 
 # 数据集对象
 class DataSet(object):
-    def __init__(self, sample_count, X, y):
-        self.sample_count = sample_count
+    def __init__(self, X, y, vectorizer):
         self.X = X
         self.y = y
+        self.vectorizer = vectorizer
         
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=0.2, random_state=0)
@@ -67,8 +101,6 @@ class PredictModel(object):
     def get_eval(self):
         return self.acc 
     
-    def get_sample_count(self):
-        return self.classification_data.sample_count
     def save(self):
         joblib.dump(value=self.model, filename="./models/"+self.model_name)
     
@@ -77,9 +109,17 @@ class PredictModel(object):
 # input
 # folder_path: 数据目录
 # vectorizer: 向量化算法
-def Read_comments_from_file(folder_path, vectorizer):
+def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
     X = []
     y = []
+    stopwords = []
+    # 读取停用词文件
+    with open(stop_words_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            # 去除每行末尾的换行符并添加到停用词列表中
+            stopwords.append(line.strip())
+            
+    # 读取数据文件
     for root, dirs, files in os.walk(folder_path):
         for dir in dirs:
             if dir == 'neg':
@@ -101,7 +141,7 @@ def Read_comments_from_file(folder_path, vectorizer):
                                 continue
                             
                             # 使用jieba进行分词
-                            words = ' '.join(jieba.cut(content))
+                            words = ' '.join([word for word in jieba.cut(content) if word not in stopwords])
                             X.append(words)
                             y.append(label)
                     except:
