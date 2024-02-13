@@ -6,6 +6,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
+from sklearn.linear_model import LogisticRegression
 import time
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -13,13 +14,47 @@ import numpy as np
 import joblib
 import os
 import jieba
+from scipy.sparse import csr_matrix
+
+class OneHotVectorizer(object):
+    def fit_transform(self, raw_documents):
+        # 生词标记为"<UNK>"，测试集有可能会有生词
+        words_set = {"<UNK>"}
+        for raw_document in raw_documents:
+            words_set.update(raw_document.split())
+
+        # 构建列表
+        words_list = list(words_set)
+
+        # 构建字典
+        words_dict = {word:idx for idx, word in enumerate(words_list)}
+        
+        # 字典长度
+        dict_len = len(words_set)
+        
+        # 数据向量化 - 词袋模型
+        X = []
+        for sentence in raw_documents:
+            x = [0] * dict_len
+            for word in set(sentence.split()):
+                idx = words_dict[word] if word in words_dict else words_dict["<UNK>"]
+                x[idx] = 1
+            X.append(x)
+        # 将列表转换为 CSR 格式的稀疏矩阵
+        sparse_matrix = csr_matrix(X)
+
+        # 打印稀疏矩阵
+        return sparse_matrix
+
+
+
 
 # 数据集对象
 class DataSet(object):
-    def __init__(self, sample_count, X, y):
-        self.sample_count = sample_count
+    def __init__(self, X, y, vectorizer):
         self.X = X
         self.y = y
+        self.vectorizer = vectorizer
         
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=0.2, random_state=0)
@@ -67,8 +102,6 @@ class PredictModel(object):
     def get_eval(self):
         return self.acc 
     
-    def get_sample_count(self):
-        return self.classification_data.sample_count
     def save(self):
         joblib.dump(value=self.model, filename="./models/"+self.model_name)
     
@@ -77,9 +110,17 @@ class PredictModel(object):
 # input
 # folder_path: 数据目录
 # vectorizer: 向量化算法
-def Read_comments_from_file(folder_path, vectorizer):
+def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
     X = []
     y = []
+    stopwords = []
+    # 读取停用词文件
+    with open(stop_words_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            # 去除每行末尾的换行符并添加到停用词列表中
+            stopwords.append(line.strip())
+            
+    # 读取数据文件
     for root, dirs, files in os.walk(folder_path):
         for dir in dirs:
             if dir == 'neg':
@@ -94,14 +135,15 @@ def Read_comments_from_file(folder_path, vectorizer):
                     try:
                         with open(file_path, 'r', encoding='gb2312', errors='ignore') as f:
                             content = f.read()
-                            content = content.strip().replace(" ", "").replace('\n', '').replace('\t', '')
+                            stripcontent = content.strip().replace(" ", "").replace('\n', '').replace('\t', '')
                         
-                            if content == "": 
+                            if stripcontent == "": 
                                 # print(file_path + " is empty")
                                 continue
                             
+                            content = content.strip().replace('\n', '').replace('\t', '')
                             # 使用jieba进行分词
-                            words = ' '.join(jieba.cut(content))
+                            words = ' '.join([word for word in jieba.cut(content) if word not in stopwords])
                             X.append(words)
                             y.append(label)
                     except:
@@ -119,9 +161,9 @@ def Read_comments_from_file(folder_path, vectorizer):
 
     y=np.array(y)
 
-
     # voca = vectorizer.vocabulary_
     # print(len(voca))
+    # print(voca)
     # vocabulary dict
 
     # 对dict重新排序，按照value的顺序打印dict
@@ -139,28 +181,31 @@ def Make_model_classifier():
 #    models.append(linear_classifier)
 
     # 创建KNeighborsClassifier模型
-    models.append(KNeighborsClassifier(n_neighbors=5))
+    models.append(KNeighborsClassifier(n_neighbors=5, weights='distance'))
+    
+    # 创建
+    models.append(LogisticRegression(C=1))
     
     # 创建DDecisionTreeClassifier模型
-    models.append(DecisionTreeClassifier())
+    models.append(DecisionTreeClassifier(criterion='entropy',max_depth=100, random_state=1))
 
     # 创建SVR模型
-    models.append(SVC())
+    models.append(SVC(kernel='linear',C=0.1))
     
     # 创建随机森林模型
-    models.append(RandomForestClassifier())
+    models.append(RandomForestClassifier(criterion='gini',n_estimators=100))
 
     # 创建AdaBoostClassifier模型
-    models.append(AdaBoostClassifier())
+    models.append(AdaBoostClassifier(n_estimators=200, learning_rate=1.0))
 
     # 创建GradientBoostingClassifier模型
-    models.append(GradientBoostingClassifier())
+    models.append(GradientBoostingClassifier(n_estimators=200, learning_rate=1.0))
 
     # 创建XGBClassifier模型
-    models.append(XGBClassifier())
+    models.append(XGBClassifier(n_estimators=200, learning_rate=1.0))
     
     # 创建LGBMClassifier模型
-    models.append(LGBMClassifier(verbosity= -1))
+    models.append(LGBMClassifier(n_estimators=200, learning_rate=1.0))
     
     return models
 def Get_model_short_name():
