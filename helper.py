@@ -6,6 +6,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
+from sklearn.linear_model import LogisticRegression
 import time
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -180,28 +181,31 @@ def Make_model_classifier():
 #    models.append(linear_classifier)
 
     # 创建KNeighborsClassifier模型
-    models.append(KNeighborsClassifier(n_neighbors=5))
+    models.append(KNeighborsClassifier(n_neighbors=5, weights='distance'))
+    
+    # 创建
+    models.append(LogisticRegression(C=1))
     
     # 创建DDecisionTreeClassifier模型
-    models.append(DecisionTreeClassifier())
+    models.append(DecisionTreeClassifier(criterion='entropy',max_depth=100, random_state=1))
 
     # 创建SVR模型
-    models.append(SVC())
+    models.append(SVC(kernel='linear',C=0.1))
     
     # 创建随机森林模型
-    models.append(RandomForestClassifier())
+    models.append(RandomForestClassifier(criterion='gini',n_estimators=100))
 
     # 创建AdaBoostClassifier模型
-    models.append(AdaBoostClassifier())
+    models.append(AdaBoostClassifier(n_estimators=200, learning_rate=1.0))
 
     # 创建GradientBoostingClassifier模型
-    models.append(GradientBoostingClassifier())
+    models.append(GradientBoostingClassifier(n_estimators=200, learning_rate=1.0))
 
     # 创建XGBClassifier模型
-    models.append(XGBClassifier())
+    models.append(XGBClassifier(n_estimators=200, learning_rate=1.0))
     
     # 创建LGBMClassifier模型
-    models.append(LGBMClassifier(verbosity= -1))
+    models.append(LGBMClassifier(n_estimators=200, learning_rate=1.0))
     
     return models
 def Get_model_short_name():
