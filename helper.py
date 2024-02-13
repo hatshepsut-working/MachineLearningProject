@@ -134,9 +134,9 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
                     try:
                         with open(file_path, 'r', encoding='gb2312', errors='ignore') as f:
                             content = f.read()
-                            content = content.strip().replace(" ", "").replace('\n', '').replace('\t', '')
+                            stripcontent = content.strip().replace(" ", "").replace('\n', '').replace('\t', '')
                         
-                            if content == "": 
+                            if stripcontent == "": 
                                 # print(file_path + " is empty")
                                 continue
                             
@@ -159,9 +159,9 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
 
     y=np.array(y)
 
-
     # voca = vectorizer.vocabulary_
     # print(len(voca))
+    # print(voca)
     # vocabulary dict
 
     # 对dict重新排序，按照value的顺序打印dict
