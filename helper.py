@@ -140,6 +140,7 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
                                 # print(file_path + " is empty")
                                 continue
                             
+                            content = content.strip().replace('\n', '').replace('\t', '')
                             # 使用jieba进行分词
                             words = ' '.join([word for word in jieba.cut(content) if word not in stopwords])
                             X.append(words)
