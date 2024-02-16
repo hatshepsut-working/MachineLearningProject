@@ -17,6 +17,7 @@ import jieba
 from scipy.sparse import csr_matrix
 
 class OneHotVectorizer(object):
+    # 用于生成词典，并向量化文本
     def fit_transform(self, raw_documents):
         # 生词标记为"<UNK>"，测试集有可能会有生词
         words_set = {"<UNK>"}
@@ -27,17 +28,17 @@ class OneHotVectorizer(object):
         words_list = list(words_set)
 
         # 构建字典
-        words_dict = {word:idx for idx, word in enumerate(words_list)}
+        self.words_dict = {word:idx for idx, word in enumerate(words_list)}
         
         # 字典长度
-        dict_len = len(words_set)
+        self.dict_len = len(words_set)
         
         # 数据向量化 - 词袋模型
         X = []
         for sentence in raw_documents:
-            x = [0] * dict_len
+            x = [0] * self.dict_len
             for word in set(sentence.split()):
-                idx = words_dict[word] if word in words_dict else words_dict["<UNK>"]
+                idx = self.words_dict[word] if word in self.words_dict else self.words_dict["<UNK>"]
                 x[idx] = 1
             X.append(x)
         # 将列表转换为 CSR 格式的稀疏矩阵
@@ -45,6 +46,22 @@ class OneHotVectorizer(object):
 
         # 打印稀疏矩阵
         return sparse_matrix
+    
+    # 用于利用已有的词典，向量化文本
+    def transform(self, raw_documents):
+        X = []
+        for sentence in raw_documents:
+            x = [0] * self.dict_len
+            for word in set(sentence.split()):
+                idx = self.words_dict[word] if word in self.words_dict else self.words_dict["<UNK>"]
+                x[idx] = 1
+            X.append(x)
+            
+        # 将列表转换为 CSR 格式的稀疏矩阵
+        sparse_matrix = csr_matrix(X)
+
+        # 打印稀疏矩阵
+        return sparse_matrix    
 
 
 
@@ -67,10 +84,12 @@ class PredictModel(object):
         self.classification_data = classification_data
         
         # 预处理数据
-        _mean = self.classification_data.X_train.mean(axis=0)
-        _std = self.classification_data.X_train.std(axis=0) + 1e-9
-        self.X_train_pre = (self.classification_data.X_train - _mean) / _std
-        self.X_test_pre = (self.classification_data.X_test - _mean) / _std
+        # _mean = self.classification_data.X_train.mean(axis=0)
+        # _std = self.classification_data.X_train.std(axis=0) + 1e-9
+        # self.X_train_pre = (self.classification_data.X_train - _mean) / _std
+        # self.X_test_pre = (self.classification_data.X_test - _mean) / _std
+        self.X_train_pre = self.classification_data.X_train
+        self.X_test_pre = self.classification_data.X_test
 
     def fit(self):
         start = time.perf_counter()
@@ -103,7 +122,7 @@ class PredictModel(object):
         return self.acc 
     
     def save(self):
-        joblib.dump(value=self.model, filename="./models/"+self.model_name)
+        joblib.dump(value=self.model, filename="./models/"+self.model_name+"-"+self.classification_data.vectorizer)
     
     
 # 读数据
@@ -140,7 +159,6 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
                             if stripcontent == "": 
                                 # print(file_path + " is empty")
                                 continue
-                            
                             content = content.strip().replace('\n', '').replace('\t', '')
                             # 使用jieba进行分词
                             words = ' '.join([word for word in jieba.cut(content) if word not in stopwords])
@@ -158,6 +176,8 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
     X = vectorizer.fit_transform(X)
 
     X = X.toarray()
+    # np.set_printoptions(threshold=np.inf)
+    
 
     y=np.array(y)
 
@@ -172,6 +192,13 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
     #     print(item)
     return X, y
 
+# 测试用返回模型
+def Get_test_model():
+    models = []
+    models.append(RandomForestClassifier(criterion='gini',n_estimators=100))
+    return models
+    
+
 # 创建分类模型
 def Make_model_classifier():
     models = []
@@ -183,13 +210,13 @@ def Make_model_classifier():
     # 创建KNeighborsClassifier模型
     models.append(KNeighborsClassifier(n_neighbors=5, weights='distance'))
     
-    # 创建
+    # 创建logisticRegressionClassifier
     models.append(LogisticRegression(C=1))
     
-    # 创建DDecisionTreeClassifier模型
+    # 创建DecisionTreeClassifier模型
     models.append(DecisionTreeClassifier(criterion='entropy',max_depth=100, random_state=1))
 
-    # 创建SVR模型
+    # 创建SVC模型
     models.append(SVC(kernel='linear',C=0.1))
     
     # 创建随机森林模型
@@ -211,6 +238,7 @@ def Make_model_classifier():
 def Get_model_short_name():
     short_name = []
     short_name.append("KN")
+    short_name.append("LG")
     short_name.append("DT")
     short_name.append("SVC")
     short_name.append("RF")
@@ -237,34 +265,42 @@ def Result_analysis(predict_models):
     return ret
         
 def Plot_analysis(sample_analysis):
-    # plt.rcParams['font.sans-serif']=['SimHei'] # 用来正常显示中文标签
-    # plt.rcParams['axes.unicode_minus']=False # 用来正常显示负号
-    plt.figure(figsize=(15, 3)) 
+    plt.figure() 
     x_line_text = Get_model_short_name()
     
     x = sample_analysis["x"]
     y = sample_analysis["y"]
     
-    # 我们需要对比的数据
-    # x:模型，y: 训练时间
-    # x: 模型，y: 预测时间
-    # x: 模型，y: 准确率
-    plt.subplot2grid((1,3),(0,0))
+    x_index = np.arange(9)
+    
     plt.title("train_duration")
-    plt.bar(x_line_text, y["train_duration"], label="train_duration")
-    plt.legend()
-    
-    
-    plt.subplot2grid((1,3),(0,1))
-    plt.title("pred_duration")
-    plt.bar(x_line_text, y["pred_duration"], label="pred_duration")
-    plt.legend()
-    
-    plt.subplot2grid((1,3),(0,2))
-    plt.title("acc")
-    plt.bar(x_line_text, y["acc"], label="acc")
-    plt.legend()
-
+    plt.bar(x_index-0.2, y["train_duration"][:9], width=0.2, color='y', label="Counter")
+    plt.bar(x_index, y["train_duration"][9:18], width=0.2, color='c', label="TFIDF")
+    plt.bar(x_index+0.2, y["train_duration"][18:], width=0.2, color='m', label="OntHot")
+    plt.xticks(x_index, x_line_text)
+    plt.grid(True)
+    plt.autoscale(enable=True, axis='y')
     plt.legend()
     plt.show()
+
+    plt.title("pred_duration")
+    plt.bar(x_index-0.2, y["pred_duration"][:9], width=0.2, color='y', label="Counter")
+    plt.bar(x_index, y["pred_duration"][9:18], width=0.2, color='c', label="TFIDF")
+    plt.bar(x_index+0.2, y["pred_duration"][18:], width=0.2, color='m', label="OntHot")
+    plt.xticks(x_index, x_line_text)
+    plt.grid(True)
+    plt.autoscale(enable=True, axis='y')
+    plt.legend()
+    plt.show()
+
+    plt.title("acc")
+    plt.bar(x_index-0.2, y["acc"][:9], width=0.2, color='y', label="Counter")
+    plt.bar(x_index, y["acc"][9:18], width=0.2, color='c', label="TFIDF")
+    plt.bar(x_index+0.2, y["acc"][18:], width=0.2, color='m', label="OntHot")
+    plt.xticks(x_index, x_line_text)
+    plt.grid(True)
+    plt.autoscale(enable=True, axis='y')
+    plt.legend()
+    plt.show()
+    
     
