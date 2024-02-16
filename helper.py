@@ -84,12 +84,12 @@ class PredictModel(object):
         self.classification_data = classification_data
         
         # 预处理数据
-        # _mean = self.classification_data.X_train.mean(axis=0)
-        # _std = self.classification_data.X_train.std(axis=0) + 1e-9
-        # self.X_train_pre = (self.classification_data.X_train - _mean) / _std
-        # self.X_test_pre = (self.classification_data.X_test - _mean) / _std
-        self.X_train_pre = self.classification_data.X_train
-        self.X_test_pre = self.classification_data.X_test
+        self._mean = self.classification_data.X_train.mean(axis=0)
+        self._std = self.classification_data.X_train.std(axis=0) + 1e-9
+        self.X_train_pre = (self.classification_data.X_train - self._mean) / self._std
+        self.X_test_pre = (self.classification_data.X_test - self._mean) / self._std
+        # self.X_train_pre = self.classification_data.X_train
+        # self.X_test_pre = self.classification_data.X_test
 
     def fit(self):
         start = time.perf_counter()
@@ -123,7 +123,12 @@ class PredictModel(object):
     
     def save(self):
         joblib.dump(value=self.model, filename="./models/"+self.model_name+"-"+self.classification_data.vectorizer)
-    
+        filename = "./models/"+self.model_name+"-"+self.classification_data.vectorizer + "-mean.txt"
+        np.savetxt(filename, self._mean)
+        filename = "./models/"+self.model_name+"-"+self.classification_data.vectorizer + "-std.txt"
+        np.savetxt(filename, self._std)
+        
+        
     
 # 读数据
 # input

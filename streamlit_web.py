@@ -41,18 +41,18 @@ if txt:
 			# 去除每行末尾的换行符并添加到停用词列表中
 			stopwords.append(line.strip())
 
-	np.set_printoptions(threshold=np.inf)
+	# np.set_printoptions(threshold=np.inf)
 	# 2、读数据 # 使用jieba进行分词
 	X = []
 	words = ' '.join([word for word in jieba.cut(txt) if word not in stopwords])
 	X.append(words)
-	print(X)
+	# print(X)
 
 	# 3、文本向量化
 	# 返回的类型是scipy.sparse._csr.csr_matrix，是一个稀疏矩阵
 	# 使用CountVectorizer进行文本向量化
 	# vectorizer = CountVectorizer()
-	
+
 	vectorizer = joblib.load("./models/CountVectorizer")
 	X = vectorizer.transform(X)
 	X = X.toarray()
@@ -60,11 +60,14 @@ if txt:
 	# print(vectorizer.vocabulary_)
 
 	# 4、预处理：推理时，需要做跟训练一样的预处理
+	filename = "./models/RandomForestClassifier-Counter-mean.txt"
+	_mean = np.loadtxt(filename)
+	filename = "./models/RandomForestClassifier-Counter-std.txt"
+	_std = np.loadtxt(filename)
 
-	_mean = X.mean(axis=0)
-	_std = X.std(axis=0) + 1e-9
+
 	X_pre = (X - _mean) / _std
-	print(_mean)
+	# print(_mean)
 	# print(_std)
 	# X_pre = X
 
@@ -77,5 +80,8 @@ if txt:
 	y_pred = knn.predict(X_pre)
 	if y_pred == 1:
 		print("预测结果：好评")
+		st.write("预测结果：好评")
 	else:
 		print("预测结果：差评")
+		st.write("预测结果：差评")
+  
