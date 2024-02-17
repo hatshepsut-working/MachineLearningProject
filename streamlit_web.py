@@ -16,9 +16,7 @@ st.title("请输入反馈意见")
 
 st.divider()
 
-txt = st.text_input(label="评论",
-              placeholder="请输入评论 ..."
-              )
+txt = st.text_area(label="评论",placeholder="请输入评论 ...",height=200)
 
 btn = st.button("提交")
 
