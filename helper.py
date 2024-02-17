@@ -134,7 +134,7 @@ class PredictModel(object):
 # input
 # folder_path: 数据目录
 # vectorizer: 向量化算法
-def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
+def Read_comments_from_file(folder_path, stop_words_path):
     X = []
     y = []
     stopwords = []
@@ -176,25 +176,6 @@ def Read_comments_from_file(folder_path, vectorizer, stop_words_path):
                 #     file_path = os.path.join(folder_path, dir, file)
                 #     print(file_path + " is not txt")
 
-    # 文本向量化
-    # 返回的类型是scipy.sparse._csr.csr_matrix，是一个稀疏矩阵
-    X = vectorizer.fit_transform(X)
-
-    X = X.toarray()
-    # np.set_printoptions(threshold=np.inf)
-    
-
-    y=np.array(y)
-
-    # voca = vectorizer.vocabulary_
-    # print(len(voca))
-    # print(voca)
-    # vocabulary dict
-
-    # 对dict重新排序，按照value的顺序打印dict
-    # voca=sorted(voca.items(), key=lambda x: x[1])
-    # for item in voca:
-    #     print(item)
     return X, y
 
 # 测试用返回模型
