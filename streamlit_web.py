@@ -64,6 +64,7 @@ if txt:
 	_std = np.loadtxt(filename)
 
 
+
 	X_pre = (X - _mean) / _std
 	# print(_mean)
 	# print(_std)
