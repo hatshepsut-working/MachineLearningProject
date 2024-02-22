@@ -86,10 +86,10 @@ class PredictModel(object):
         # 预处理数据
         self._mean = self.classification_data.X_train.mean(axis=0)
         self._std = self.classification_data.X_train.std(axis=0) + 1e-9
-        self.X_train_pre = (self.classification_data.X_train - self._mean) / self._std
-        self.X_test_pre = (self.classification_data.X_test - self._mean) / self._std
-        # self.X_train_pre = self.classification_data.X_train
-        # self.X_test_pre = self.classification_data.X_test
+        # self.X_train_pre = (self.classification_data.X_train - self._mean) / self._std
+        # self.X_test_pre = (self.classification_data.X_test - self._mean) / self._std
+        self.X_train_pre = self.classification_data.X_train
+        self.X_test_pre = self.classification_data.X_test
 
     def fit(self):
         start = time.perf_counter()
@@ -117,6 +117,7 @@ class PredictModel(object):
     def _evaluation(self):
         # 模型评估
         self.acc = (self.y_pred == self.classification_data.y_test).mean()
+        # self.acc = self.model.score(X=self.X_test_pre, y=self.classification_data.y_test)
             
     def get_eval(self):
         return self.acc 
@@ -167,6 +168,7 @@ def Read_comments_from_file(folder_path, stop_words_path):
                             content = content.strip().replace('\n', '').replace('\t', '')
                             # 使用jieba进行分词
                             words = ' '.join([word for word in jieba.cut(content) if word not in stopwords])
+                            # words = ' '.join(jieba.cut(content))
                             X.append(words)
                             y.append(label)
                     except:
@@ -181,7 +183,8 @@ def Read_comments_from_file(folder_path, stop_words_path):
 # 测试用返回模型
 def Get_test_model():
     models = []
-    models.append(RandomForestClassifier(criterion='gini',n_estimators=100))
+    # models.append(LGBMClassifier(n_estimators=200, learning_rate=0.1))
+    models.append(LogisticRegression(C=10))
     return models
     
 
@@ -189,36 +192,36 @@ def Get_test_model():
 def Make_model_classifier():
     models = []
     
-    # 创建LinearClassifier模型
-#    linear_classifier = LinearClassifier()
-#    models.append(linear_classifier)
+    # # 创建LinearClassifier模型
+    # linear_classifier = LinearClassifier()
+    # models.append(linear_classifier)
 
     # 创建KNeighborsClassifier模型
-    models.append(KNeighborsClassifier(n_neighbors=5, weights='distance'))
+    models.append(KNeighborsClassifier(n_neighbors=11, weights='distance'))
     
     # 创建logisticRegressionClassifier
-    models.append(LogisticRegression(C=1))
+    models.append(LogisticRegression(C=10))
     
     # 创建DecisionTreeClassifier模型
-    models.append(DecisionTreeClassifier(criterion='entropy',max_depth=100, random_state=1))
+    models.append(DecisionTreeClassifier(criterion='entropy',max_depth=100, random_state=4))
 
     # 创建SVC模型
-    models.append(SVC(kernel='linear',C=0.1))
+    models.append(SVC(kernel='linear',C=10))
     
     # 创建随机森林模型
     models.append(RandomForestClassifier(criterion='gini',n_estimators=100))
 
-    # 创建AdaBoostClassifier模型
-    models.append(AdaBoostClassifier(n_estimators=200, learning_rate=1.0))
+    # 创建AdaBoostClassifier模型，执行时间很长，谨慎使用
+    models.append(AdaBoostClassifier(n_estimators=200, learning_rate=1.0))  # 可以把n_estimators调小一点，比如100
 
-    # 创建GradientBoostingClassifier模型
-    models.append(GradientBoostingClassifier(n_estimators=200, learning_rate=1.0))
+    # 创建GradientBoostingClassifier模型，执行时间很长，谨慎使用
+    models.append(GradientBoostingClassifier(n_estimators=200, learning_rate=1.0))  # 可以把n_estimators调小一点，比如100
 
     # 创建XGBClassifier模型
     models.append(XGBClassifier(n_estimators=200, learning_rate=1.0))
     
     # 创建LGBMClassifier模型
-    models.append(LGBMClassifier(n_estimators=200, learning_rate=1.0))
+    models.append(LGBMClassifier(n_estimators=200, learning_rate=0.1, verbose=-1))
     
     return models
 def Get_model_short_name():
@@ -251,40 +254,55 @@ def Result_analysis(predict_models):
     return ret
         
 def Plot_analysis(sample_analysis):
-    plt.figure() 
+
+    # plt.figure() 
     x_line_text = Get_model_short_name()
     
     x = sample_analysis["x"]
     y = sample_analysis["y"]
     
-    x_index = np.arange(9)
-    
+    x_index = np.arange(len(x_line_text))
+    bar_width = 0.25
+    plt.figure(figsize=(16, 8))
     plt.title("train_duration")
-    plt.bar(x_index-0.2, y["train_duration"][:9], width=0.2, color='y', label="Counter")
-    plt.bar(x_index, y["train_duration"][9:18], width=0.2, color='c', label="TFIDF")
-    plt.bar(x_index+0.2, y["train_duration"][18:], width=0.2, color='m', label="OntHot")
+    bar1 = plt.bar(x_index-bar_width, y["train_duration"][:9], width=bar_width, color='y', label="Counter")
+    bar2 = plt.bar(x_index, y["train_duration"][9:18], width=bar_width, color='c', label="TFIDF")
+    bar3 = plt.bar(x_index+bar_width, y["train_duration"][18:], width=bar_width, color='m', label="OntHot")
+    plt.bar_label(bar1, fmt='%0.2f', padding=3)
+    plt.bar_label(bar2, fmt='%0.2f', padding=3)
+    plt.bar_label(bar3, fmt='%0.2f', padding=3)
     plt.xticks(x_index, x_line_text)
-    plt.grid(True)
+    plt.grid(True, alpha=0.2)
     plt.autoscale(enable=True, axis='y')
     plt.legend()
     plt.show()
 
+
+    plt.figure(figsize=(16, 8))
     plt.title("pred_duration")
-    plt.bar(x_index-0.2, y["pred_duration"][:9], width=0.2, color='y', label="Counter")
-    plt.bar(x_index, y["pred_duration"][9:18], width=0.2, color='c', label="TFIDF")
-    plt.bar(x_index+0.2, y["pred_duration"][18:], width=0.2, color='m', label="OntHot")
+    bar1 = plt.bar(x_index-bar_width, y["pred_duration"][:9], width=bar_width, color='y', label="Counter")
+    bar2 = plt.bar(x_index, y["pred_duration"][9:18], width=bar_width, color='c', label="TFIDF")
+    bar3 = plt.bar(x_index+bar_width, y["pred_duration"][18:], width=bar_width, color='m', label="OntHot")
+    plt.bar_label(bar1, fmt='%0.2f', padding=3)
+    plt.bar_label(bar2, fmt='%0.2f', padding=3)
+    plt.bar_label(bar3, fmt='%0.2f', padding=3)
     plt.xticks(x_index, x_line_text)
-    plt.grid(True)
+    plt.grid(True, alpha=0.2)
     plt.autoscale(enable=True, axis='y')
     plt.legend()
     plt.show()
 
+
+    plt.figure(figsize=(16, 8))
     plt.title("acc")
-    plt.bar(x_index-0.2, y["acc"][:9], width=0.2, color='y', label="Counter")
-    plt.bar(x_index, y["acc"][9:18], width=0.2, color='c', label="TFIDF")
-    plt.bar(x_index+0.2, y["acc"][18:], width=0.2, color='m', label="OntHot")
+    bar1 = plt.bar(x_index-bar_width, y["acc"][:9], width=bar_width, color='y', label="Counter")
+    bar2 = plt.bar(x_index, y["acc"][9:18], width=bar_width, color='c', label="TFIDF")
+    bar3 = plt.bar(x_index+bar_width, y["acc"][18:], width=bar_width, color='m', label="OntHot")
+    plt.bar_label(bar1, fmt='%0.3f', padding=3)
+    plt.bar_label(bar2, fmt='%0.3f', padding=3)
+    plt.bar_label(bar3, fmt='%0.3f', padding=3)
     plt.xticks(x_index, x_line_text)
-    plt.grid(True)
+    plt.grid(True, alpha=0.2)
     plt.autoscale(enable=True, axis='y')
     plt.legend()
     plt.show()
